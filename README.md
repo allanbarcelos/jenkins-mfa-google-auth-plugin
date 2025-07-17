@@ -12,8 +12,11 @@ This plugin adds an additional layer of security by requiring users to provide a
 ## ✨ Features
 
 ✅ Enforces MFA for Jenkins users
-✅ Integrates with [Google Authenticator](https://github.com/google/google-authenticator) or any TOTP app
+
+✅ Integrates with [Google Authenticator](https://github.com/google/google-authenticator)
+
 ✅ Configurable enforcement policies
+
 ✅ Easy to set up and manage through Jenkins UI
 
 ---

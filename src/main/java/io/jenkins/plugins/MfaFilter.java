@@ -3,12 +3,13 @@
  *
  * Class: MfaFilter
  *
- * This servlet filter blocks access to Jenkins pages for users who have MFA enabled
- * but have not yet completed MFA verification in the current session.
- * It allows free access to MFA verification and login URLs.
+ * Unified servlet filter that enforces multi-factor authentication (MFA) for Jenkins users.
+ * It intercepts HTTP requests and redirects users with MFA enabled but not yet verified
+ * to the MFA verification page. Exclusions include static resources, login pages, and
+ * the verification page itself.
  *
  * Author: Allan Barcelos
- * Date: 2025-07-17
+ * Date: 2025-07-17 (Updated for unified implementation)
  */
 
 package io.jenkins.plugins;
@@ -21,20 +22,17 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import jenkins.model.Jenkins;
 
-/**
- * Filtro que bloqueia o acesso se o usuário não tiver passado pela verificação MFA.
- */
 @Extension
 public class MfaFilter implements Filter {
 
     @Override
     public void init(FilterConfig filterConfig) {
-        // nada a inicializar
+        // Initialization not needed
     }
 
     @Override
     public void destroy() {
-        // nada a destruir
+        // Cleanup not needed
     }
 
     @Override
@@ -48,35 +46,49 @@ public class MfaFilter implements Filter {
 
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse rsp = (HttpServletResponse) response;
+        String path = req.getRequestURI();
+        String contextPath = req.getContextPath();
 
-        // Garante que Jenkins já está inicializado
+        // Skip if Jenkins isn't fully initialized
         if (Jenkins.getInstanceOrNull() == null) {
             chain.doFilter(request, response);
             return;
         }
 
-        User u = User.current();
-        if (u != null) {
-            MfaUserProperty mfa = u.getProperty(MfaUserProperty.class);
+        // Skip static resources and common excluded paths
+        if (isExcludedPath(path, contextPath)) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        User user = User.current();
+        if (user != null) {
+            MfaUserProperty mfa = user.getProperty(MfaUserProperty.class);
             if (mfa != null && mfa.isMfaEnabled()) {
-                Object verified = req.getSession().getAttribute("mfa-verified");
-                String path = req.getRequestURI();
-                String ctx = req.getContextPath();
+                boolean verified = req.getSession() != null
+                        && Boolean.TRUE.equals(req.getSession().getAttribute("mfa-verified"));
 
-                // Permitir acesso às próprias URLs de verificação MFA e login
-                if (path.startsWith(ctx + "/mfa-verify") || path.startsWith(ctx + "/login")) {
-                    chain.doFilter(request, response);
-                    return;
-                }
-
-                // Se não verificado, redirecionar
-                if (verified == null) {
-                    rsp.sendRedirect(ctx + "/mfa-verify");
+                if (!verified) {
+                    rsp.sendRedirect(contextPath + "/mfa-verify");
                     return;
                 }
             }
         }
 
         chain.doFilter(request, response);
+    }
+
+    /**
+     * Determines if the requested path should be excluded from MFA enforcement
+     */
+    private boolean isExcludedPath(String path, String contextPath) {
+        // List of paths that don't require MFA verification
+        return path.startsWith(contextPath + "/static/")
+                || path.startsWith(contextPath + "/adjuncts/")
+                || path.startsWith(contextPath + "/mfa-verify")
+                || path.startsWith(contextPath + "/login")
+                || path.startsWith(contextPath + "/signup")
+                || path.startsWith(contextPath + "/error")
+                || path.startsWith(contextPath + "/securityRealm");
     }
 }

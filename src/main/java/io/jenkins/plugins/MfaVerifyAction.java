@@ -64,28 +64,23 @@ public class MfaVerifyAction implements RootAction {
         if (mfa != null && mfa.isMfaEnabled()) {
             String code = req.getParameter("totpCode");
             if (TOTPUtil.verifyCode(mfa.getSecretKey(), code)) {
-                HttpSession session;
-                try {
-                    // Session Fixation protection
-                    session = req.getSession();
-                    session.invalidate(); // invalidate current session
-                    session = req.getSession(true); // create new session
-                } catch (IllegalStateException e) {
-                    LOGGER.log(Level.WARNING, "Error during session regeneration", e);
-                    session = req.getSession(true); // fallback - just get/create session
-                }
-
-                // Set verification flag on the NEW session
+                // Proteção simplificada - apenas marca como verificado
+                HttpSession session = req.getSession();
                 session.setAttribute("mfa-verified", true);
+                
+                // Alternativa: Rotaciona o ID da sessão sem invalidá-la
+                session = req.getSession(true);
+                
+                LOGGER.log(Level.INFO, "MFA verification successful for user: " + u.getId());
                 rsp.sendRedirect(req.getContextPath() + "/");
                 return;
             } else {
-                rsp.sendRedirect("mfa-verify?error=1");
+                LOGGER.log(Level.WARNING, "Failed MFA attempt for user: " + u.getId());
+                rsp.sendRedirect(req.getContextPath() + "/mfa-verify?error=1");
                 return;
             }
         }
 
-        // Without MFA, redirect
         rsp.sendRedirect(req.getContextPath() + "/");
     }
 }

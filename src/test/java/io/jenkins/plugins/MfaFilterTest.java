@@ -51,13 +51,14 @@ public class MfaFilterTest {
     public void setUp() {
         filter = new MfaFilter();
         when(request.getSession()).thenReturn(session);
+        when(request.getContextPath()).thenReturn("/jenkins");
+        when(request.getRequestURI()).thenReturn("/jenkins/some-path");
     }
 
     @Test
     public void testInitAndDestroy() throws Exception {
         filter.init(filterConfig);
         filter.destroy();
-        // Apenas verifica que não lança exceções
     }
 
     @Test
@@ -74,6 +75,7 @@ public class MfaFilterTest {
     public void testJenkinsNotInitializedPassesThrough() throws Exception {
         try (MockedStatic<Jenkins> mockedJenkins = mockStatic(Jenkins.class)) {
             mockedJenkins.when(Jenkins::getInstanceOrNull).thenReturn(null);
+            when(request.getRequestURI()).thenReturn("/jenkins/some-path");
 
             filter.doFilter(request, response, chain);
 
@@ -88,6 +90,7 @@ public class MfaFilterTest {
 
             mockedJenkins.when(Jenkins::getInstanceOrNull).thenReturn(jenkins);
             mockedUser.when(User::current).thenReturn(null);
+            when(request.getRequestURI()).thenReturn("/jenkins/some-path");
 
             filter.doFilter(request, response, chain);
 
@@ -103,6 +106,7 @@ public class MfaFilterTest {
             mockedJenkins.when(Jenkins::getInstanceOrNull).thenReturn(jenkins);
             mockedUser.when(User::current).thenReturn(user);
             when(user.getProperty(MfaUserProperty.class)).thenReturn(null);
+            when(request.getRequestURI()).thenReturn("/jenkins/some-path");
 
             filter.doFilter(request, response, chain);
 
@@ -120,7 +124,6 @@ public class MfaFilterTest {
             when(user.getProperty(MfaUserProperty.class)).thenReturn(mfaProperty);
             when(mfaProperty.isMfaEnabled()).thenReturn(true);
             when(request.getRequestURI()).thenReturn("/jenkins/restricted");
-            when(request.getContextPath()).thenReturn("/jenkins");
 
             filter.doFilter(request, response, chain);
 
@@ -129,6 +132,56 @@ public class MfaFilterTest {
         }
     }
 
-    // maybe more tests ...
+    @Test
+    public void testMfaEnabledAndVerifiedPassesThrough() throws Exception {
+        try (MockedStatic<Jenkins> mockedJenkins = mockStatic(Jenkins.class);
+                MockedStatic<User> mockedUser = mockStatic(User.class)) {
 
+            mockedJenkins.when(Jenkins::getInstanceOrNull).thenReturn(jenkins);
+            mockedUser.when(User::current).thenReturn(user);
+            when(user.getProperty(MfaUserProperty.class)).thenReturn(mfaProperty);
+            when(mfaProperty.isMfaEnabled()).thenReturn(true);
+            when(session.getAttribute("mfa-verified")).thenReturn(true);
+            when(request.getRequestURI()).thenReturn("/jenkins/restricted");
+
+            filter.doFilter(request, response, chain);
+
+            verify(chain).doFilter(request, response);
+            verify(response, never()).sendRedirect(anyString());
+        }
+    }
+
+    @Test
+    public void testExcludedPathsPassThrough() throws Exception {
+        String[] excludedPaths = {
+            "/jenkins/static/resource.css",
+            "/jenkins/adjuncts/script.js",
+            "/jenkins/mfa-verify",
+            "/jenkins/login",
+            "/jenkins/signup",
+            "/jenkins/error",
+            "/jenkins/securityRealm"
+        };
+
+        for (String path : excludedPaths) {
+            when(request.getRequestURI()).thenReturn(path);
+            filter.doFilter(request, response, chain);
+        }
+
+        verify(chain, times(excludedPaths.length)).doFilter(request, response);
+    }
+
+    @Test
+    public void testStaticResourcesWithDifferentContextPath() throws Exception {
+        when(request.getContextPath()).thenReturn("/custom-context");
+        when(request.getRequestURI()).thenReturn("/custom-context/static/resource.css");
+
+        try (MockedStatic<Jenkins> mockedJenkins = mockStatic(Jenkins.class)) {
+            mockedJenkins.when(Jenkins::getInstanceOrNull).thenReturn(jenkins);
+
+            filter.doFilter(request, response, chain);
+
+            verify(chain).doFilter(request, response);
+        }
+    }
 }

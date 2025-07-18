@@ -1,5 +1,5 @@
 /*
- * Project: MFA Google Auth Plugin
+ * Project: MFA TOTP Auth Plugin
  *
  * Class: MfaVerifyAction
  *
@@ -10,7 +10,7 @@
  * Users without MFA enabled are redirected to the main Jenkins page directly.
  *
  * Author: Allan Barcelos
- * Date: 2025-07-17
+ * Date: 2025-07-18
  */
 package io.jenkins.plugins;
 
@@ -20,12 +20,11 @@ import hudson.model.User;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.servlet.http.HttpSession;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
 /**
- * Página intermediária para o segundo fator (MFA).
+ * Intermediate page for the second factor (MFA).
  * URL: /mfa-verify
  */
 @Extension
@@ -35,7 +34,7 @@ public class MfaVerifyAction implements RootAction {
 
     @Override
     public String getIconFileName() {
-        return null; // não mostra no menu lateral
+        return null; // does not show in the side menu
     }
 
     @Override
@@ -49,7 +48,7 @@ public class MfaVerifyAction implements RootAction {
     }
 
     /**
-     * Processa o POST com o código TOTP
+     * Processes POST with TOTP code
      */
     public void doVerify(StaplerRequest req, StaplerResponse rsp) throws IOException {
         User u = User.current();
@@ -63,14 +62,8 @@ public class MfaVerifyAction implements RootAction {
 
         if (mfa != null && mfa.isMfaEnabled()) {
             String code = req.getParameter("totpCode");
-            if (TOTPUtil.verifyCode(mfa.getEncryptedSecretKey(), code)) {
-                // Proteção simplificada - apenas marca como verificado
-                HttpSession session = req.getSession();
-                session.setAttribute("mfa-verified", true);
-
-                // Alternativa: Rotaciona o ID da sessão sem invalidá-la
-                session = req.getSession(true);
-
+            if (TOTPUtil.verifyCode(mfa.getSecretKey(), code)) {
+                req.getSession().setAttribute("mfa-verified", true);
                 LOGGER.log(Level.INFO, "MFA verification successful for user: " + u.getId());
                 rsp.sendRedirect(req.getContextPath() + "/");
                 return;

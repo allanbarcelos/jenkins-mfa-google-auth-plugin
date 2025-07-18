@@ -1,21 +1,15 @@
 /*
- * Project: MFA Google Auth Plugin
+ * Project: MFA TOTP Auth Plugin
  *
  * Class: QrCodeAction
  *
- * Provides HTTP endpoints to support Google Authenticator MFA setup for Jenkins users.
- *
- * - Generates a new TOTP secret and returns the secret along with the otpauth URL in JSON format.
- * - Generates a QR code image for the provided secret to facilitate easy scanning by authenticator apps.
+ * Provides HTTP endpoints for TOTP-based MFA setup.
+ * Generates secrets and QR codes compatible with any TOTP app.
  *
  * URLs:
- *   /plugin/mfa-google-auth/generateSecret - generates and returns the secret and otpauth URL
- *   /plugin/mfa-google-auth/qrcode          - returns a PNG QR code image for the secret
- *
- * Author: Allan Barcelos
- * Date: 2025-07-17
+ *   /plugin/mfa-totp/generateSecret - generates secret and otpauth URL
+ *   /plugin/mfa-totp/qrcode        - returns QR code PNG image
  */
-
 package io.jenkins.plugins;
 
 import com.google.zxing.BarcodeFormat;
@@ -36,10 +30,7 @@ import org.kohsuke.stapler.StaplerResponse;
 public class QrCodeAction implements RootAction {
 
     private static final Logger LOGGER = Logger.getLogger(QrCodeAction.class.getName());
-
-    public QrCodeAction() {
-        LOGGER.info("QrCodeAction initialized");
-    }
+    private static final String ISSUER = "Jenkins";
 
     @Override
     public String getIconFileName() {
@@ -48,35 +39,27 @@ public class QrCodeAction implements RootAction {
 
     @Override
     public String getDisplayName() {
-        return "MFA Google Auth Action";
+        return "MFA TOTP Action";
     }
 
     @Override
     public String getUrlName() {
-        return "mfa-google-auth";
+        return "mfa-totp";
     }
 
-    // URL: /plugin/mfa-google-auth/generateSecret
-    public void doGenerateSecret(StaplerRequest req, StaplerResponse rsp) throws Exception {
-        String username = req.getSession().getAttribute("jenkins.security.SecurityRealm.user") != null
-                ? req.getSession()
-                        .getAttribute("jenkins.security.SecurityRealm.user")
-                        .toString()
-                : "user";
+    public void doGenerateSecret(StaplerRequest req, StaplerResponse rsp) throws IOException {
+        try {
+            String username = getCurrentUsername(req);
+            String secret = TOTPUtil.generateSecret();
+            String otpAuthUrl = buildOtpAuthUrl(username, secret);
 
-        var key = TOTPUtil.generateSecret();
-        String secret = key.getKey();
-
-        String otpAuthUrl = TOTPUtil.getQRBarcodeURL(username, "jenkins", secret);
-
-        rsp.setContentType("application/json;charset=UTF-8");
-        JSONObject json = new JSONObject();
-        json.put("secret", secret);
-        json.put("otpAuthUrl", otpAuthUrl);
-        rsp.getWriter().print(json.toString());
+            sendJsonResponse(rsp, secret, otpAuthUrl);
+        } catch (Exception e) {
+            LOGGER.severe("Failed to generate secret: " + e.getMessage());
+            rsp.sendError(500, "Failed to generate secret");
+        }
     }
 
-    // URL: /plugin/mfa-google-auth/qrcode
     public void doQrcode(StaplerRequest req, StaplerResponse rsp) throws IOException {
         String secret = req.getParameter("secret");
         if (secret == null || secret.isEmpty()) {
@@ -84,17 +67,39 @@ public class QrCodeAction implements RootAction {
             return;
         }
 
-        String otpAuth = TOTPUtil.getQRBarcodeURL("user", "jenkins", secret);
-
         try {
-            QRCodeWriter qrCodeWriter = new QRCodeWriter();
-            BitMatrix bitMatrix = qrCodeWriter.encode(otpAuth, BarcodeFormat.QR_CODE, 200, 200);
-            BufferedImage qrImage = MatrixToImageWriter.toBufferedImage(bitMatrix);
-
-            rsp.setContentType("image/png");
-            javax.imageio.ImageIO.write(qrImage, "PNG", rsp.getOutputStream());
-        } catch (WriterException e) {
+            generateQRCodeImage(rsp, buildOtpAuthUrl("user", secret));
+        } catch (Exception e) {
+            LOGGER.severe("QR Code generation failed: " + e.getMessage());
             rsp.sendError(500, "Failed to generate QR Code");
         }
+    }
+
+    private String getCurrentUsername(StaplerRequest req) {
+        Object userAttr = req.getSession().getAttribute("jenkins.security.SecurityRealm.user");
+        return userAttr != null ? userAttr.toString() : "user";
+    }
+
+    private String buildOtpAuthUrl(String username, String secret) {
+        return String.format(
+                "otpauth://totp/%s:%s?secret=%s&issuer=%s&algorithm=SHA1&digits=6&period=30",
+                ISSUER, username, secret, ISSUER);
+    }
+
+    private void sendJsonResponse(StaplerResponse rsp, String secret, String otpAuthUrl) throws IOException {
+        rsp.setContentType("application/json;charset=UTF-8");
+        JSONObject json = new JSONObject();
+        json.put("secret", secret);
+        json.put("otpAuthUrl", otpAuthUrl);
+        rsp.getWriter().print(json.toString());
+    }
+
+    private void generateQRCodeImage(StaplerResponse rsp, String otpAuth) throws IOException, WriterException {
+        QRCodeWriter qrCodeWriter = new QRCodeWriter();
+        BitMatrix bitMatrix = qrCodeWriter.encode(otpAuth, BarcodeFormat.QR_CODE, 200, 200);
+        BufferedImage qrImage = MatrixToImageWriter.toBufferedImage(bitMatrix);
+
+        rsp.setContentType("image/png");
+        javax.imageio.ImageIO.write(qrImage, "PNG", rsp.getOutputStream());
     }
 }

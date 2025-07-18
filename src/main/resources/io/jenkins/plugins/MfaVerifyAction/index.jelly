@@ -2,18 +2,18 @@
 <j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:f="/lib/form">
   <l:layout title="MFA Verification">
     <l:main-panel>
-      <h1>Verificação MFA</h1>
+      <h1>MFA Verify</h1>
       <j:if test="${request.getParameter('error') != null}">
         <div style="color:red; font-weight:bold;">
-          Código inválido. Tente novamente.
+          Invalid code. Try again.
         </div>
       </j:if>
       <form method="post" action="${rootURL}/mfa-verify/verify">
-        <f:entry title="Código do app">
+        <f:entry title="Code">
           <f:textbox name="totpCode" />
         </f:entry>
         <f:entry>
-          <f:submit value="Verificar" />
+          <f:submit value="Verify" />
         </f:entry>
       </form>
     </l:main-panel>

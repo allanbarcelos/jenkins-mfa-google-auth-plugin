@@ -10,14 +10,14 @@
   </parent>
 
   <groupId>io.jenkins.plugins</groupId>
-  <artifactId>mfa-google-auth</artifactId>
+  <artifactId>mfa-totp-plugin</artifactId>
   <version>${revision}${changelist}</version>
   <packaging>hpi</packaging>
 
-  <name>MFA Google Auth Plugin</name>
-  <description>Adds TOTP-based Multi-Factor Authentication (MFA/2FA) to Jenkins using Google Authenticator.
-  Enhances security by requiring a time-based one-time password in addition to regular credentials.
-  Features QR code setup, per-user enforcement, and secure secret storage.</description>
+  <name>MFA TOTP Plugin</name>
+  <description>Adds standards-compliant TOTP (RFC 6238) Multi-Factor Authentication to Jenkins.
+    Compatible with all major authenticator apps (Google Authenticator, Microsoft Authenticator, Authy, etc.).
+    Features secure secret storage, QR code enrollment, and flexible enforcement policies.</description>
   <url>https://github.com/jenkinsci/${project.artifactId}-plugin</url>
   <licenses>
     <license>
@@ -35,12 +35,15 @@
   <properties>
     <revision>1.0</revision>
     <changelist />
-    <!-- https://www.jenkins.io/doc/developer/plugin-development/choosing-jenkins-baseline/ -->
     <jenkins.baseline>2.479</jenkins.baseline>
     <jenkins.version>${jenkins.baseline}.3</jenkins.version>
     <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
-
     <spotless.check.skip>false</spotless.check.skip>
+    <security.reporting>https://www.jenkins.io/security/#reporting-vulnerabilities</security.reporting>
+    <security.team>security@jenkins.io</security.team>
+    <!-- Library versions -->
+    <otpjava.version>2.0.1</otpjava.version>
+    <zxing.version>3.5.3</zxing.version>
   </properties>
 
   <dependencyManagement>
@@ -56,23 +59,43 @@
   </dependencyManagement>
 
   <dependencies>
+    <!-- TOTP Implementation -->
+    <dependency>
+      <groupId>com.github.bastiaanjansen</groupId>
+      <artifactId>otp-java</artifactId>
+      <version>${otpjava.version}</version>
+    </dependency>
 
+    <!-- QR Code Generation -->
     <dependency>
       <groupId>com.google.zxing</groupId>
       <artifactId>core</artifactId>
-      <version>3.5.3</version>
+      <version>${zxing.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.zxing</groupId>
       <artifactId>javase</artifactId>
-      <version>3.5.3</version>
+      <version>${zxing.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.warrenstrange</groupId>
-      <artifactId>googleauth</artifactId>
-      <version>1.5.0</version>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+      <version>1.16.0</version>
     </dependency>
-    <!-- TEST -->
+
+    <!-- Jenkins Security -->
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>credentials</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-aggregator</artifactId>
+      <version>2.6</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Testing -->
     <dependency>
       <groupId>org.junit.vintage</groupId>
       <artifactId>junit-vintage-engine</artifactId>
@@ -90,7 +113,12 @@
       <id>repo.jenkins-ci.org</id>
       <url>https://repo.jenkins-ci.org/public/</url>
     </repository>
+    <repository>
+      <id>jitpack.io</id>
+      <url>https://jitpack.io</url>
+    </repository>
   </repositories>
+
   <pluginRepositories>
     <pluginRepository>
       <id>repo.jenkins-ci.org</id>
@@ -98,4 +126,16 @@
     </pluginRepository>
   </pluginRepositories>
 
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.jenkins-ci.tools</groupId>
+        <artifactId>maven-hpi-plugin</artifactId>
+        <extensions>true</extensions>
+        <configuration>
+          <compatibleSinceVersion>2.426.1</compatibleSinceVersion>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 </project>

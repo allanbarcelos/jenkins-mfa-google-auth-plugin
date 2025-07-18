@@ -16,7 +16,7 @@ import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.util.PluginServletFilter;
-import javax.servlet.ServletException;
+import jakarta.servlet.ServletException;
 
 @Extension
 public class MfaFilterRegister {

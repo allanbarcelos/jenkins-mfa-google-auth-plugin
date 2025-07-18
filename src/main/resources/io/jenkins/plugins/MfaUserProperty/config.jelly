@@ -1,69 +1,32 @@
-<!-- src/main/resources/io/jenkins/plugins/MfaUserProperty/config.jelly -->
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form" xmlns:l="/lib/layout">
+<j:jelly xmlns:j="jelly:core" 
+         xmlns:f="/lib/form" 
+         xmlns:l="/lib/layout"
+         xmlns:st="jelly:stapler"> <!-- Adicione esta linha -->
 
-  <f:entry title="Ativar MFA" field="mfaEnabled">
+  <f:entry title="${%MfaUserProperty.enable.label}" field="mfaEnabled">
     <f:checkbox id="mfaEnabledCheckbox" />
   </f:entry>
 
   <j:if test="${!instance.mfaEnabled}">
     <div id="mfaSetupContainer" style="display:none; margin-top:10px;">
-      <f:entry title="QR Code">
-        <img id="qrCodeImage" alt="QR Code para Google Authenticator" />
+      <f:entry title="${%MfaUserProperty.qrCode.label}">
+        <img id="qrCodeImage" alt="${%MfaUserProperty.qrCode.alt}" />
       </f:entry>
 
-      <f:entry title="Código do App">
+      <f:entry title="${%MfaUserProperty.verificationCode.label}">
         <f:textbox field="totpCode" />
       </f:entry>
 
-      <!-- input escondido para secretKey -->
       <input type="hidden" name="_.secretKey" />
     </div>
   </j:if>
+
+  <st:adjunct includes="io.jenkins.plugins.MfaUserProperty.script" />
+  
   <script>
-    (function() {
-      const checkbox = document.getElementById('mfaEnabledCheckbox');
-      const container = document.getElementById('mfaSetupContainer');
-      const qrImage = document.getElementById('qrCodeImage');
-      const secretInput = document.querySelector('input[name="_.secretKey"]');
-
-      function showOrHideMfaSetup() {
-        if (checkbox.checked) {
-          container.style.display = 'block';
-
-          // Se ainda não tiver QR gerado, buscar do backend
-          console.log('Image SRC: ' + qrImage.src)
-          if (!qrImage.src) {
-            console.log('${rootURL}/mfa-google-auth/generateSecret')
-            fetch('${rootURL}/mfa-google-auth/generateSecret')
-              .then(resp => resp.json())
-              .then(data => {
-                console.log('${rootURL}/mfa-google-auth/qrcode?secret=' + encodeURIComponent(data.secret))
-                qrImage.src = '${rootURL}/mfa-google-auth/qrcode?secret=' + encodeURIComponent(data.secret);
-                secretInput.value = data.secret;
-              })
-              .catch(err => {
-                console.error('Erro ao gerar QR Code:', err);
-              });
-          }
-        } else {
-          console.log('ERRO __')
-          container.style.display = 'none';
-          qrImage.src = '';
-          secretInput.value = '';
-        }
-      }
-
-      checkbox.addEventListener('change', () => {
-          console.log('Checkbox mudou! Estado:', checkbox.checked);
-        showOrHideMfaSetup();
-      });
-
-      // Ao carregar a página, checar se já estava ativo para mostrar QR e campo
-      if (checkbox.checked) {
-        showOrHideMfaSetup();
-      }
-    })();
+    document.addEventListener('DOMContentLoaded', function() {
+      initMfaToggle();
+    });
   </script>
-
 </j:jelly>

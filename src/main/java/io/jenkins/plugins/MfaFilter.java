@@ -1,5 +1,5 @@
 /*
- * Project: MFA Google Auth Plugin
+ * Project: MFA TOTP Plugin
  *
  * Class: MfaFilter
  *
@@ -9,21 +9,27 @@
  * the verification page itself.
  *
  * Author: Allan Barcelos
- * Date: 2025-07-17 (Updated for unified implementation)
+ * Date: 2025-07-18 (Updated for Jakarta EE and unified implementation)
  */
 
 package io.jenkins.plugins;
 
 import hudson.Extension;
 import hudson.model.User;
+import jakarta.servlet.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import javax.servlet.*;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 
 @Extension
 public class MfaFilter implements Filter {
+
+    private static final Logger LOGGER = Logger.getLogger(MfaFilter.class.getName());
 
     @Override
     public void init(FilterConfig filterConfig) {
@@ -46,36 +52,64 @@ public class MfaFilter implements Filter {
 
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse rsp = (HttpServletResponse) response;
+
+        // Security headers for all responses
+        rsp.setHeader("X-Frame-Options", "DENY");
+        rsp.setHeader("Content-Security-Policy", "frame-ancestors 'none'");
+        rsp.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+
         String path = req.getRequestURI();
         String contextPath = req.getContextPath();
 
         // Skip if Jenkins isn't fully initialized
-        if (Jenkins.getInstanceOrNull() == null) {
-            chain.doFilter(request, response);
-            return;
-        }
-
-        // Skip static resources and common excluded paths
-        if (isExcludedPath(path, contextPath)) {
+        if (Jenkins.getInstanceOrNull() == null || isExcludedPath(path, contextPath)) {
             chain.doFilter(request, response);
             return;
         }
 
         User user = User.current();
-        if (user != null) {
-            MfaUserProperty mfa = user.getProperty(MfaUserProperty.class);
-            if (mfa != null && mfa.isMfaEnabled()) {
-                boolean verified = req.getSession() != null
-                        && Boolean.TRUE.equals(req.getSession().getAttribute("mfa-verified"));
+        if (user == null) {
+            chain.doFilter(request, response);
+            return;
+        }
 
-                if (!verified) {
-                    rsp.sendRedirect(contextPath + "/mfa-verify");
-                    return;
-                }
+        MfaGlobalConfig globalConfig = GlobalConfiguration.all().get(MfaGlobalConfig.class);
+        if (globalConfig == null) {
+            LOGGER.warning("MfaGlobalConfig not found - using default settings");
+            globalConfig = new MfaGlobalConfig();
+        }
+
+        MfaUserProperty mfa = user.getProperty(MfaUserProperty.class);
+
+        boolean mfaRequired =
+                (mfa != null && mfa.isMfaEnabled()) || (globalConfig != null && globalConfig.isEnforceMfaForAllUsers());
+
+        if (mfaRequired) {
+
+            // Check if it is a tokenized API call (if the option is enabled)
+            if (globalConfig != null && globalConfig.isExcludeApiTokens() && isApiTokenRequest(req)) {
+                chain.doFilter(request, response);
+                return;
+            }
+
+            boolean verified = req.getSession() != null
+                    && Boolean.TRUE.equals(req.getSession().getAttribute("mfa-verified"));
+
+            if (!verified) {
+                LOGGER.log(Level.INFO, "MFA required for user {0}", user.getId());
+                rsp.sendRedirect(contextPath + "/mfa-verify");
+                return;
             }
         }
 
         chain.doFilter(request, response);
+    }
+
+    private boolean isApiTokenRequest(HttpServletRequest req) {
+        String authHeader = req.getHeader("Authorization");
+        if (authHeader == null) return false;
+        return authHeader.startsWith("Bearer ")
+                || (authHeader.startsWith("Basic ") && req.getRequestURI().startsWith(req.getContextPath() + "/api/"));
     }
 
     /**
@@ -89,6 +123,8 @@ public class MfaFilter implements Filter {
                 || path.startsWith(contextPath + "/login")
                 || path.startsWith(contextPath + "/signup")
                 || path.startsWith(contextPath + "/error")
-                || path.startsWith(contextPath + "/securityRealm");
+                || path.startsWith(contextPath + "/securityRealm")
+                || path.startsWith(contextPath + "/api/")
+                || path.startsWith(contextPath + "/favicon.ico");
     }
 }

@@ -1,13 +1,16 @@
 # Security Policy
 
-## Reporting a Vulnerability
+## Reporting Vulnerabilities
 
-To report security issues send an email to security@barcelos.dev
+Please report security vulnerabilities through the [official Jenkins vulnerability reporting process](https://www.jenkins.io/security/#reporting-vulnerabilities).
 
-The following keys may be used to communicate sensitive information to developer:
+- **Do not** create public issues for security vulnerabilities
+- Security reports are handled by the [Jenkins Security Team](mailto:security@jenkins.io)
+- You should receive a response within 48 hours
+- Expect updates on the vulnerability status throughout the process
 
-| Name | Fingerprint |
-|------|-------------|
-| Allan Barcelos | 492F 6B41 B83C B0BF 5B64 5777 F437 AC65 26AB 7A49 |
+## Security Updates
 
-You can import a key by running the following command with that individual’s fingerprint: `gpg --keyserver hkps://keys.openpgp.org --recv-keys "<fingerprint>"` Ensure that you put quotes around fingerprints containing spaces.
+All security releases will be announced on:
+- [Jenkins Security Advisories](https://www.jenkins.io/security/advisories/)
+- The [jenkinsci-advisories](https://groups.google.com/g/jenkinsci-advisories) mailing list

@@ -15,7 +15,9 @@
   <packaging>hpi</packaging>
 
   <name>MFA Google Auth Plugin</name>
-  <description>Multi-Factor Authentication with Google Authenticator.</description>
+  <description>Adds TOTP-based Multi-Factor Authentication (MFA/2FA) to Jenkins using Google Authenticator.
+  Enhances security by requiring a time-based one-time password in addition to regular credentials.
+  Features QR code setup, per-user enforcement, and secure secret storage.</description>
   <url>https://github.com/jenkinsci/${project.artifactId}-plugin</url>
   <licenses>
     <license>

@@ -1,4 +1,6 @@
 <?jelly escape-by-default='true'?>
 <div>
-    TODO
+  Adds TOTP-based Multi-Factor Authentication (MFA/2FA) to Jenkins using Google Authenticator.
+  Enhances security by requiring a time-based one-time password in addition to regular credentials.
+  Features QR code setup, per-user enforcement, and secure secret storage.
 </div>

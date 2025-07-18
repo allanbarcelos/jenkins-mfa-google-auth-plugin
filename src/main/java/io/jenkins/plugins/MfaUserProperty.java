@@ -22,12 +22,13 @@ import hudson.model.User;
 import hudson.model.UserProperty;
 import hudson.model.UserPropertyDescriptor;
 import hudson.util.FormValidation;
+import hudson.util.Secret;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 
 public class MfaUserProperty extends UserProperty {
     private final boolean mfaEnabled;
-    private final String secretKey;
+    private final Secret secretKey;
 
     @DataBoundConstructor
     public MfaUserProperty(boolean mfaEnabled, String secretKey, String totpCode) throws FormException {
@@ -44,7 +45,7 @@ public class MfaUserProperty extends UserProperty {
             }
         }
         this.mfaEnabled = mfaEnabled;
-        this.secretKey = secretKey;
+        this.secretKey = Secret.fromString(secretKey);
     }
 
     public boolean isMfaEnabled() {
@@ -52,6 +53,10 @@ public class MfaUserProperty extends UserProperty {
     }
 
     public String getSecretKey() {
+        return secretKey.getPlainText();
+    }
+
+    public Secret getEncryptedSecretKey() {
         return secretKey;
     }
 

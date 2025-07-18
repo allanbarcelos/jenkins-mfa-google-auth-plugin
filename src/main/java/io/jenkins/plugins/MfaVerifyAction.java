@@ -63,14 +63,14 @@ public class MfaVerifyAction implements RootAction {
 
         if (mfa != null && mfa.isMfaEnabled()) {
             String code = req.getParameter("totpCode");
-            if (TOTPUtil.verifyCode(mfa.getSecretKey(), code)) {
+            if (TOTPUtil.verifyCode(mfa.getEncryptedSecretKey(), code)) {
                 // Proteção simplificada - apenas marca como verificado
                 HttpSession session = req.getSession();
                 session.setAttribute("mfa-verified", true);
-                
+
                 // Alternativa: Rotaciona o ID da sessão sem invalidá-la
                 session = req.getSession(true);
-                
+
                 LOGGER.log(Level.INFO, "MFA verification successful for user: " + u.getId());
                 rsp.sendRedirect(req.getContextPath() + "/");
                 return;

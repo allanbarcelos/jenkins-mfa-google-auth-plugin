@@ -15,6 +15,7 @@ package io.jenkins.plugins;
 
 import com.warrenstrange.googleauth.GoogleAuthenticator;
 import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
+import hudson.util.Secret;
 
 public class TOTPUtil {
 
@@ -26,6 +27,14 @@ public class TOTPUtil {
     public static String getQRBarcodeURL(String user, String host, String secret) {
         String issuer = host;
         return String.format("otpauth://totp/%s@%s?secret=%s&issuer=%s", user, host, secret, issuer);
+    }
+
+    public static boolean verifyCode(Secret secret, String code) {
+        try {
+            return verifyCode(secret.getPlainText(), code);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public static boolean verifyCode(String secret, String code) {

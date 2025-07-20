@@ -1,5 +1,5 @@
 /*
- * Project: MFA Google Auth Plugin
+ * Project: MFA TOTP Auth Plugin
  *
  * Class: MfaFilterRegister
  *

@@ -1,3 +1,4 @@
+<!-- /src/main/resources/index.jelly -->
 <?jelly escape-by-default='true'?>
 <div>
   Adds TOTP-based Multi-Factor Authentication (MFA/2FA) to Jenkins using TOTP Authenticator.

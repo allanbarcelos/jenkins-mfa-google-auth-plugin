@@ -1,0 +1,14 @@
+/* /src/main/resources/io/jenkins/plugins/MfaUserProperty/style.css */
+.hidden {
+    display: none;
+}
+
+.visible {
+    display: block;
+    margin-top: 10px;
+}
+
+.error-message {
+    color: red;
+    font-weight: bold;
+}

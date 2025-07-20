@@ -1,3 +1,8 @@
+// /src/main/resources/io/jenkins/plugins/MfaUserProperty/script.js
+document.addEventListener('DOMContentLoaded', function() {
+    initMfaToggle();
+});
+
 function initMfaToggle() {
     const checkbox = document.getElementById('mfaEnabledCheckbox');
     const container = document.getElementById('mfaSetupContainer');
@@ -6,14 +11,15 @@ function initMfaToggle() {
 
     function showOrHideMfaSetup() {
         if (checkbox.checked) {
-            container.style.display = 'block';
+            container.classList.remove('hidden');
+            container.classList.add('visible');
 
             if (!qrImage.src) {
                 fetch(window.rootURL + '/mfa-totp/generateSecret')
                     .then(resp => resp.json())
                     .then(data => {
                         qrImage.src = window.rootURL + '/mfa-totp/qrcode?secret=' + 
-                                      encodeURIComponent(data.secret);
+                                    encodeURIComponent(data.secret);
                         secretInput.value = data.secret;
                     })
                     .catch(err => {
@@ -21,7 +27,8 @@ function initMfaToggle() {
                     });
             }
         } else {
-            container.style.display = 'none';
+            container.classList.remove('visible');
+            container.classList.add('hidden');
             qrImage.src = '';
             secretInput.value = '';
         }
@@ -33,6 +40,3 @@ function initMfaToggle() {
         showOrHideMfaSetup();
     }
 }
-
-// Exporta a função para ser chamada pelo jelly
-window.initMfaToggle = initMfaToggle;

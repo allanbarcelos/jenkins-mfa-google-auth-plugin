@@ -1,15 +1,19 @@
+<!-- /src/main/resources/io/jenkins/plugins/MfaUserProperty/config.jelly -->
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" 
          xmlns:f="/lib/form" 
          xmlns:l="/lib/layout"
-         xmlns:st="jelly:stapler"> <!-- Adicione esta linha -->
+         xmlns:st="jelly:stapler">
+
+  <st:adjunct includes="io.jenkins.plugins.MfaUserProperty.style"/>
+  <st:adjunct includes="io.jenkins.plugins.MfaUserProperty.script"/>
 
   <f:entry title="${%MfaUserProperty.enable.label}" field="mfaEnabled">
     <f:checkbox id="mfaEnabledCheckbox" />
   </f:entry>
 
   <j:if test="${!instance.mfaEnabled}">
-    <div id="mfaSetupContainer" style="display:none; margin-top:10px;">
+    <div id="mfaSetupContainer" class="hidden">
       <f:entry title="${%MfaUserProperty.qrCode.label}">
         <img id="qrCodeImage" alt="${%MfaUserProperty.qrCode.alt}" />
       </f:entry>
@@ -21,12 +25,4 @@
       <input type="hidden" name="_.secretKey" />
     </div>
   </j:if>
-
-  <st:adjunct includes="io.jenkins.plugins.MfaUserProperty.script" />
-  
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      initMfaToggle();
-    });
-  </script>
 </j:jelly>

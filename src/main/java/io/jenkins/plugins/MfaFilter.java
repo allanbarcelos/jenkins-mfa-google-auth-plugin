@@ -67,29 +67,24 @@ public class MfaFilter implements Filter {
         }
 
         User user = User.current();
-        if (user == null) {
+        MfaGlobalConfig globalConfig = GlobalConfiguration.all().get(MfaGlobalConfig.class);
+
+        if (user == null || globalConfig == null) {
             chain.doFilter(request, response);
             return;
         }
 
-        MfaGlobalConfig globalConfig = GlobalConfiguration.all().get(MfaGlobalConfig.class);
-        if (globalConfig == null) {
-            LOGGER.warning("MfaGlobalConfig not found - using default settings");
-            globalConfig = new MfaGlobalConfig();
+        // Check if it is a tokenized API call (if the option is enabled)
+        if (globalConfig.isExcludeApiTokens() && isApiTokenRequest(req)) {
+            chain.doFilter(request, response);
+            return;
         }
 
         MfaUserProperty mfa = user.getProperty(MfaUserProperty.class);
 
-        boolean mfaRequired =
-                (mfa != null && mfa.isMfaEnabled()) || (globalConfig != null && globalConfig.isEnforceMfaForAllUsers());
+        boolean mfaRequired = (mfa != null && mfa.isMfaEnabled()) || globalConfig.isEnforceMfaForAllUsers();
 
         if (mfaRequired) {
-
-            // Check if it is a tokenized API call (if the option is enabled)
-            if (globalConfig != null && globalConfig.isExcludeApiTokens() && isApiTokenRequest(req)) {
-                chain.doFilter(request, response);
-                return;
-            }
 
             boolean verified = req.getSession() != null
                     && Boolean.TRUE.equals(req.getSession().getAttribute("mfa-verified"));
